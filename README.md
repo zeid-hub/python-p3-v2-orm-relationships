@@ -82,8 +82,8 @@ single piece of data about the associated `Department`.
 
 `Department` is on the "one" side of the relationship, thus it should not
 **store** a list of the associated `Employee` instances. Instead, a list of the
-many `Employee` objects associated with the will be **computed** by looking at
-the foreign key value stored with each employee.
+many `Employee` objects associated with the department will be **computed** by
+looking at the `department_id` foreign key value stored with each employee.
 
 ---
 
@@ -205,6 +205,64 @@ class Department:
             Employee(row[1], row[2], row[3], row[0]) for row in rows
         ]
 ```
+
+## Exploring the one-to-many relationship
+
+The file `lib/debug.py` has been updated to seed the database with two
+departments and several employees. Run the file to recreate the database with
+sample data:
+
+```bash
+python lib/debug.py
+```
+
+In the `ipdb` session, you can explore the table data using the ORM methods
+(your employee data will be different since names are fake and job title and
+department are random choices):
+
+```py
+ipdb> Department.get_all()
+[<Department 1: Payroll, Building A, 5th Floor>, <Department 2: Human Resources, Building C, East Wing>]
+```
+
+```py
+ipdb> Employee.get_all()
+[<Employee 1: Raymond Mckay, Database Administrator, Department ID: 1 >, <Employee 2: Dr. Christopher Miller, Manager, Department ID: 1 >, <Employee 3: Mary Watson PhD, Full-stack Engineer, Department ID: 2 >, <Employee 4: Lisa Mcdowell, Full-stack Engineer, Department ID: 2 >, <Employee 5: Thomas Stewart, Full-stack Engineer, Department ID: 2 >, <Employee 6: Christina Alvarez, Manager, Department ID: 1 >, <Employee 7: Angel Martinez, Full-stack Engineer, Department ID: 1 >, <Employee 8: Robert Barber, Manager, Department ID: 1 >, <Employee 9: Hannah Castro, Manager, Department ID: 2 >, <Employee 10: Evelyn Riley, Manager, Department ID: 1 >]
+```
+
+Let's select the payroll department:
+
+```py
+ipdb> payroll = Department.find_by_id(1)
+ipdb> payroll
+<Department 1: Payroll, Building A, 5th Floor>
+```
+
+We can call the `employees()` method to get the list of employees that work in
+the payroll department:
+
+```py
+ipdb> payroll.employees()
+[<Employee 1: Raymond Mckay, Database Administrator, Department ID: 1 >, <Employee 2: Dr. Christopher Miller, Manager, Department ID: 1 >, <Employee 6: Christina Alvarez, Manager, Department ID: 1 >, <Employee 7: Angel Martinez, Full-stack Engineer, Department ID: 1 >, <Employee 8: Robert Barber, Manager, Department ID: 1 >, <Employee 10: Evelyn Riley, Manager, Department ID: 1 >]
+```
+
+Let's try the other side of the relationship, getting the department associated
+with a given employee:
+
+```py
+ipdb> employee = Employee.find_by_id(1)
+ipdb> employee
+<Employee 1: Raymond Mckay, Database Administrator, Department ID: 1 >
+ipdb> employee.department_id
+1
+ipdb> Department.find_by_id(employee.department_id)
+<Department 1: Payroll, Building A, 5th Floor>
+```
+
+You can also use the SQLITE EXPLORER to view the relationship (your data will be
+different):
+
+![employee table](https://curriculum-content.s3.amazonaws.com/7134/python-p3-v2-orm/employee_table.png)
 
 ## Testing the `Employee` and `Department` classes
 
