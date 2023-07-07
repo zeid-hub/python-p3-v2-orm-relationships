@@ -28,8 +28,7 @@ laborum! Sit aspernatur accusantium aut doloribus saepe est magni quod aut
 molestiae voluptatem.
 
 Vel inventore minus aut ullam maiores sit internos cupiditate eos odit totam
-eos molestiae galisum. Et ipsum provident ut nihil dicta et dicta doloremque
-eum magnam ullam ut quibusdam quaerat.
+eos molestiae galisum.
 
 ***
 
