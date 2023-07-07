@@ -100,6 +100,67 @@ class TestEmployee:
                 (employee.id, employee.name, employee.job_title, employee.department_id) ==
                 (employee.id, "Kai", "Web Developer", department.id))
 
+    def test_updates_row(self):
+        '''contains a method "update()" that updates an instance's corresponding database record to match its new attribute values.'''
+
+        Department.create_table()
+        department1 = Department("Payroll", "Building A, 5th Floor")
+        department1.save()
+        department2 = Department("Human Resources", "Building C, 2nd Floor")
+        department2.save()
+
+        Employee.create_table()
+
+        employee1 = Employee.create("Raha", "Accountant", department1.id)
+        employee2 = Employee.create(
+            "Tal", "Benefits Coordinator", department2.id)
+        id1 = employee1.id
+        id2 = employee2.id
+        employee1.name = "Raha Lee"
+        employee1.job_title = "Senior Accountant"
+        employee1.department_id = department2.id
+        employee1.update()
+
+        # Confirm employee updated
+        employee = Employee.find_by_id(id1)
+        assert ((employee.id, employee.name, employee.job_title, employee.department_id) ==
+                (employee1.id, employee1.name, employee1.job_title, employee1.department_id) ==
+                (id1, "Raha Lee", "Senior Accountant", department2.id))
+
+        # Confirm employee not updated
+        employee = Employee.find_by_id(id2)
+        assert ((employee.id, employee.name, employee.job_title, employee.department_id) ==
+                (employee2.id, employee2.name, employee2.job_title, employee2.department_id) ==
+                (id2, "Tal", "Benefits Coordinator", department2.id))
+
+    def test_deletes_row(self):
+        '''contains a method "delete()" that deletes the instance's corresponding database record'''
+        Department.create_table()
+        department = Department("Payroll", "Building A, 5th Floor")
+        department.save()
+
+        Employee.create_table()
+
+        employee1 = Employee.create("Raha", "Accountant", department.id)
+        id1 = employee1.id
+        employee2 = Employee.create(
+            "Tal", "Benefits Coordinator", department.id)
+        id2 = employee2.id
+
+        employee = Employee.find_by_id(id1)
+        employee.delete()
+        # assert row deleted
+        assert (Employee.find_by_id(employee1.id) is None)
+        # assert Employee object not modified
+        assert ((employee1.id, employee1.name, employee1.job_title, employee1.department_id) ==
+                (id1, "Raha", "Accountant", department.id))
+
+        employee = Employee.find_by_id(id2)
+        # assert employee2 row not modified, employee2 object not modified
+        assert ((employee.id, employee.name, employee.job_title, employee.department_id) ==
+                (employee2.id, employee2.name, employee2.job_title, employee2.department_id) ==
+                (id2, "Tal", "Benefits Coordinator", department.id))
+
     def test_creates_new_instance_from_db(self):
         '''contains method "new_from_db()" that takes a db row and creates an Employee instance.'''
 
@@ -198,51 +259,3 @@ class TestEmployee:
 
         employee = Employee.find_by_id(3)
         assert (employee is None)
-
-    def test_updates_record(self):
-        '''contains a method "update()" that updates an instance's corresponding database record to match its new attribute values.'''
-
-        Department.create_table()
-        department1 = Department("Payroll", "Building A, 5th Floor")
-        department1.save()
-        department2 = Department("Human Resources", "Building C, 2nd Floor")
-        department2.save()
-
-        Employee.create_table()
-
-        employee1 = Employee.create("Raha", "Accountant", department1.id)
-        employee2 = Employee.create(
-            "Tal", "Benefits Coordinator", department2.id)
-        id1 = employee1.id
-        id2 = employee2.id
-        employee1.name = "Raha Lee"
-        employee1.job_title = "Senior Accountant"
-        employee1.department_id = department2.id
-        employee1.update()
-
-        # Confirm employee updated
-        employee = Employee.find_by_id(id1)
-        assert ((employee.id, employee.name, employee.job_title, employee.department_id) ==
-                (employee1.id, employee1.name, employee1.job_title, employee1.department_id))
-
-        # Confirm employee not updated
-        employee = Employee.find_by_id(id2)
-        assert ((employee.id, employee.name, employee.job_title, employee.department_id) ==
-                (employee2.id, employee2.name, employee2.job_title, employee2.department_id))
-
-    def test_deletes_record(self):
-        '''contains a method "delete()" that deletes the instance's corresponding database record'''
-        Department.create_table()
-        department = Department("Payroll", "Building A, 5th Floor")
-        department.save()
-
-        Employee.create_table()
-
-        employee1 = Employee.create("Raha", "Accountant", department.id)
-        employee2 = Employee.create(
-            "Tal", "Benefits Coordinator", department.id)
-
-        employee = Employee.find_by_id(employee1.id)
-        employee.delete()
-        assert (Employee.find_by_id(employee1.id) is None)
-        assert (Employee.find_by_id(employee2.id))

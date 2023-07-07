@@ -68,6 +68,61 @@ class TestDepartment:
                 (department.id, department.name, department.location) ==
                 (row[0], "Payroll", "Building A, 5th Floor"))
 
+    def test_updates_row(self):
+        '''contains a method "update()" that updates an instance's corresponding db row to match its new attribute values.'''
+        Department.create_table()
+
+        department1 = Department.create(
+            "Human Resources", "Building C, East Wing")
+        id1 = department1.id
+        department2 = Department.create("Marketing", "Building B, 3rd Floor")
+        id2 = department2.id
+
+        # Assign new values for name and location
+        department2.name = "Sales and Marketing"
+        department2.location = "Building B, 4th Floor"
+
+        # Persist the updated name and location values
+        department2.update()
+
+        # assert department1 row was not updated, department1 object state not updated
+        # assert row not updated
+        department = Department.find_by_id(id1)
+        assert ((department.id, department.name, department.location)
+                == (id1, "Human Resources", "Building C, East Wing")
+                == (department1.id, department1.name, department1.location))
+
+        # assert department2 row was updated, department2 object state is correct
+        department = Department.find_by_id(id2)
+        assert ((department.id, department.name, department.location)
+                == (id2, "Sales and Marketing", "Building B, 4th Floor")
+                == (department2.id, department2.name, department2.location))
+
+    def test_deletes_row(self):
+        '''contains a method "delete()" that deletes the instance's corresponding db row'''
+        Department.create_table()
+
+        department1 = Department.create(
+            "Human Resources", "Building C, East Wing")
+        id1 = department1.id
+        department2 = Department.create(
+            "Sales and Marketing", "Building B, 4th Floor")
+        id2 = department2.id
+
+        department2.delete()
+
+        # assert department1 row was not deleted, department1 object state is correct
+        department = Department.find_by_id(id1)
+        assert ((department.id, department.name, department.location)
+                == (id1, "Human Resources", "Building C, East Wing")
+                == (department1.id, department1.name, department1.location))
+
+        # assert department2 row is deleted
+        assert (Department.find_by_id(id2) is None)
+        # assert department2 object state remains correct
+        assert ((id2, "Sales and Marketing", "Building B, 4th Floor")
+                == (department2.id, department2.name, department2.location))
+
     def test_creates_new_instance_from_db(self):
         '''contains method "new_from_db()" that takes a table row and creates a Department instance.'''
 
@@ -103,28 +158,6 @@ class TestDepartment:
                 (department2.id, "Marketing", "Building B, 3rd Floor")
                 )
 
-    def test_finds_by_name(self):
-        '''contains method "find_by_name()" that returns a Department instance corresponding to the db row retrieved by name.'''
-
-        Department.create_table()
-        department1 = Department.create(
-            "Human Resources", "Building C, East Wing")
-        department2 = Department.create("Marketing", "Building B, 3rd Floor")
-
-        department = Department.find_by_name("Human Resources")
-        assert (
-            (department.id, department.name, department.location) ==
-            (department1.id, "Human Resources", "Building C, East Wing")
-        )
-
-        department = Department.find_by_name("Marketing")
-        assert (
-            (department.id, department.name, department.location) ==
-            (department2.id, "Marketing", "Building B, 3rd Floor")
-        )
-        department = Department.find_by_name("Unknown")
-        assert (department is None)
-
     def test_finds_by_id(self):
         '''contains method "find_by_id()" that returns a Department instance corresponding to the db row retrieved by id.'''
 
@@ -146,44 +179,27 @@ class TestDepartment:
         department = Department.find_by_id(0)
         assert (department is None)
 
-    def test_updates_row(self):
-        '''contains a method "update()" that updates an instance's corresponding db row to match its new attribute values.'''
-        Department.create_table()
+    def test_finds_by_name(self):
+        '''contains method "find_by_name()" that returns a Department instance corresponding to the db row retrieved by name.'''
 
+        Department.create_table()
         department1 = Department.create(
             "Human Resources", "Building C, East Wing")
         department2 = Department.create("Marketing", "Building B, 3rd Floor")
 
-        id1 = department1.id
-        id2 = department2.id
-        department2.name = "Sales and Marketing"
-        department2.location = "Building B, 4th Floor"
-        department2.update()
+        department = Department.find_by_name("Human Resources")
+        assert (
+            (department.id, department.name, department.location) ==
+            (department1.id, "Human Resources", "Building C, East Wing")
+        )
 
-        # assert row not updated
-        department = Department.find_by_id(id1)
-        assert ((department.id, department.name, department.location)
-                == (id1, "Human Resources", "Building C, East Wing"))
-
-        # assert row updated
-        department = Department.find_by_id(id2)
-        assert ((department.id, department.name, department.location)
-                == (id2, "Sales and Marketing", "Building B, 4th Floor"))
-
-    def test_deletes_record(self):
-        '''contains a method "delete()" that deletes the instance's corresponding db row'''
-        Department.create_table()
-
-        department1 = Department.create(
-            "Human Resources", "Building C, East Wing")
-        id = department1.id
-        department2 = Department.create("Marketing", "Building B, 3rd Floor")
-
-        department = Department.find_by_id(id)
-        department.delete()
-        assert (Department.find_by_id(id) is None)  # assert row deleted
-        # assert row not deleted
-        assert (Department.find_by_id(department2.id))
+        department = Department.find_by_name("Marketing")
+        assert (
+            (department.id, department.name, department.location) ==
+            (department2.id, "Marketing", "Building B, 3rd Floor")
+        )
+        department = Department.find_by_name("Unknown")
+        assert (department is None)
 
     def test_get_employees(self):
         '''contain a method "employees" that gets the employees for the current Department instance '''

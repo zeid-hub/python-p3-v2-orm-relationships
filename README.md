@@ -82,19 +82,19 @@ single piece of data about the associated `Department`.
 
 `Department` is on the "one" side of the relationship, thus it should not
 **store** a list of the associated `Employee` instances. Instead, a list of the
-many `Employee` objects associated with the will be **computed** from data
-stored about each employee.
+many `Employee` objects associated with the will be **computed** by looking at
+the foreign key value stored with each employee.
 
 ---
 
 ## Updating the `Employee` class to own and manage the relationship
 
-First let's update the `Employee` class to store the id of the associated
-`Department`.
+First let's update the `Employee` class to store the foreign key id of the
+associated `Department`.
 
 - Update the `__init__` method to add a parameter `department_id` and store the
   value in a new attribute with the same name.
-- Update the `__repr__` method to department the include the new attribute.
+- Update the `__repr__` method to include the new attribute.
 
 ```py
 class Employee:
@@ -182,7 +182,7 @@ Since `Department` is not on the owning side of the relationship, we won't store
 anything about employees in the "departments" table. But we might want to get a
 list of all employees that work for a department. We'll add a method to
 `Department` that accomplishes this task by querying the "employees" table for
-rows containing the foreign key value matching the current department's id.
+rows that contain a foreign key value that matches the current department's id.
 We'll also need to import the `Employee` class:
 
 ```py
