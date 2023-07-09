@@ -23,6 +23,9 @@ and employees:
 
 ![company erd](https://curriculum-content.s3.amazonaws.com/7134/python-p3-v2-orm/department_employee_erd.png)
 
+Let's assume each employee works for exactly one department. The relationship
+represents composition since an employee must be associated with a department.
+
 ## Code Along
 
 This lesson is a code-along, so fork and clone the repo.
@@ -77,6 +80,8 @@ thus it only needs to store a single value to maintain the relationship.
 relationship and is responsible for managing the relationship by storing a
 single piece of data about the associated `Department`.
 
+- The "Employee" class will have an attribute to reference the associated
+  `Department` object.
 - The "employees" table will contain a column to store a foreign key reference
   to the "departments" table.
 
@@ -89,31 +94,35 @@ looking at the `department_id` foreign key value stored with each employee.
 
 ## Updating the `Employee` class to own and manage the relationship
 
-First let's update the `Employee` class to store the foreign key id of the
-associated `Department`.
+First let's update the `Employee` class to add a reference to the associated
+`Department`.
 
-- Update the `__init__` method to add a parameter `department_id` and store the
+- Import the `Department` class
+- Update the `__init__` method to add a parameter `department` and store the
   value in a new attribute with the same name.
-- Update the `__repr__` method to include the new attribute.
+- Update the `__repr__` method to include the department name.
 
 ```py
+from config import CURSOR, CONN
+from department import Department
+
 class Employee:
 
-    def __init__(self, name, job_title, department_id, id=None):
+    def __init__(self, name, job_title, department, id=None):
         self.id = id
         self.name = name
         self.job_title = job_title
-        self.department_id = department_id
+        self.department = department
 
     def __repr__(self):
         return (
             f"<Employee {self.id}: {self.name}, {self.job_title}, "
-            + f"Department ID: {self.department_id} >"
-        )
+            + f"Department: {self.department.name} >")
 ```
 
 Next, we'll update the `create_table` method to add a column named
-`department_id` to store the relationship as a foreign key:
+`department_id` to store the relationship as a foreign key in the "employees"
+table:
 
 ```py
 @classmethod
@@ -131,7 +140,8 @@ def create_table(cls):
 ```
 
 We need up adapt the `save`, `update`, and `create` methods to persist the new
-`department_id` attribute:
+relationship by storing the department object's id (`self.department.id`) as the
+foreign key value in the "employees" table:
 
 ```py
 def save(self):
@@ -140,7 +150,7 @@ def save(self):
         VALUES (?, ?, ?)
     """
 
-    CURSOR.execute(sql, (self.name, self.job_title, self.department_id))
+    CURSOR.execute(sql, (self.name, self.job_title, self.department.id))
     CONN.commit()
 
     self.id = CURSOR.lastrowid
@@ -152,26 +162,29 @@ def update(self):
         WHERE id = ?
     """
     CURSOR.execute(sql, (self.name, self.job_title,
-                    self.department_id, self.id))
+                    self.department.id, self.id))
     CONN.commit()
 
+
 @classmethod
-def create(cls, name, job_title, department_id):
+def create(cls, name, job_title, department):
     """ Initialize a new Employee object and save the object to the database """
-    employee = Employee(name, job_title, department_id)
+    employee = Employee(name, job_title, department)
     employee.save()
     return employee
 ```
 
-The last change to the `Employee` class is to update the `new_from_db` method to
-include the new `department_id` foreign key column (i.e. `row[3]`) when
-instantiating the `Employee` class instance.
+The final change to the `Employee` class is to update the `new_from_db` method
+to include the department when instantiating the `Employee` class instance. We
+use the foreign key stored in `row[3]` (i.e. the `department_id` column in the
+"employees" table) to retrieve the associated `Department` class instance.
 
 ```py
 @classmethod
 def new_from_db(cls, row):
     """Initialize a new Employee object using the values from the table row."""
-    employee = cls(row[1], row[2], row[3])
+    department = Department.find_by_id(row[3])
+    employee = cls(row[1], row[2], department)
     employee.id = row[0]
     return employee
 ```
@@ -183,17 +196,19 @@ anything about employees in the "departments" table. But we might want to get a
 list of all employees that work for a department. We'll add a method to
 `Department` that accomplishes this task by querying the "employees" table for
 rows that contain a foreign key value that matches the current department's id.
-We'll also need to import the `Employee` class:
+We'll import the `Employee` class within the function definition to avoid an
+issue with circular imports (since the `Employee` class imports the `Department`
+class as well).
 
 ```py
 from config import CURSOR, CONN
-from employee import Employee
 
 class Department:
 
     # existing methods ...
 
     def employees(self):
+        from employee import Employee
         sql = """
             SELECT * FROM employees
             WHERE department_id = ?
@@ -202,23 +217,24 @@ class Department:
 
         rows = CURSOR.fetchall()
         return [
-            Employee(row[1], row[2], row[3], row[0]) for row in rows
+            Employee(row[1], row[2], self, row[0]) for row in rows
         ]
 ```
 
 ## Exploring the one-to-many relationship
 
-The file `lib/debug.py` has been updated to seed the database with two
-departments and several employees. Run the file to recreate the database with
-sample data:
+The file `lib/debug.py` has been updated to initialize the database with two
+departments and several employees. The code generates fake names for the
+employees, and picks a random job title and department for each employee.
+
+Run the file to recreate the database with sample data:
 
 ```bash
 python lib/debug.py
 ```
 
 In the `ipdb` session, you can explore the table data using the ORM methods
-(your employee data will be different since names are fake and job title and
-department are random choices):
+(your employee data will be different):
 
 ```py
 ipdb> Department.get_all()
@@ -227,7 +243,7 @@ ipdb> Department.get_all()
 
 ```py
 ipdb> Employee.get_all()
-[<Employee 1: Raymond Mckay, Database Administrator, Department ID: 1 >, <Employee 2: Dr. Christopher Miller, Manager, Department ID: 1 >, <Employee 3: Mary Watson PhD, Full-stack Engineer, Department ID: 2 >, <Employee 4: Lisa Mcdowell, Full-stack Engineer, Department ID: 2 >, <Employee 5: Thomas Stewart, Full-stack Engineer, Department ID: 2 >, <Employee 6: Christina Alvarez, Manager, Department ID: 1 >, <Employee 7: Angel Martinez, Full-stack Engineer, Department ID: 1 >, <Employee 8: Robert Barber, Manager, Department ID: 1 >, <Employee 9: Hannah Castro, Manager, Department ID: 2 >, <Employee 10: Evelyn Riley, Manager, Department ID: 1 >]
+[<Employee 1: Deborah Diaz, Web Designer, Department: Payroll >, <Employee 2: Darlene Cook, Web Designer, Department: Human Resources >, <Employee 3: Paul Welch, Database Administrator, Department: Payroll >, <Employee 4: Matthew King, Full-stack Engineer, Department: Payroll >, <Employee 5: Tracey Cox, Manager, Department: Payroll >]
 ```
 
 Let's select the payroll department:
@@ -239,11 +255,11 @@ ipdb> payroll
 ```
 
 We can call the `employees()` method to get the list of employees that work in
-the payroll department:
+the payroll department.
 
 ```py
 ipdb> payroll.employees()
-[<Employee 1: Raymond Mckay, Database Administrator, Department ID: 1 >, <Employee 2: Dr. Christopher Miller, Manager, Department ID: 1 >, <Employee 6: Christina Alvarez, Manager, Department ID: 1 >, <Employee 7: Angel Martinez, Full-stack Engineer, Department ID: 1 >, <Employee 8: Robert Barber, Manager, Department ID: 1 >, <Employee 10: Evelyn Riley, Manager, Department ID: 1 >]
+[<Employee 1: Deborah Diaz, Web Designer, Department: Payroll >, <Employee 3: Paul Welch, Database Administrator, Department: Payroll >, <Employee 4: Matthew King, Full-stack Engineer, Department: Payroll >, <Employee 5: Tracey Cox, Manager, Department: Payroll >]
 ```
 
 Let's try the other side of the relationship, getting the department associated
@@ -252,10 +268,8 @@ with a given employee:
 ```py
 ipdb> employee = Employee.find_by_id(1)
 ipdb> employee
-<Employee 1: Raymond Mckay, Database Administrator, Department ID: 1 >
-ipdb> employee.department_id
-1
-ipdb> Department.find_by_id(employee.department_id)
+<Employee 1: Deborah Diaz, Web Designer, Department: Payroll >
+ipdb> employee.department
 <Department 1: Payroll, Building A, 5th Floor>
 ```
 
@@ -288,7 +302,7 @@ side.
 
 ```py
 from config import CURSOR, CONN
-from employee import Employee
+
 
 class Department:
 
@@ -408,6 +422,7 @@ class Department:
         return cls.new_from_db(row) if row else None
 
     def employees(self):
+        from employee import Employee
         sql = """
             SELECT * FROM employees
             WHERE department_id = ?
@@ -416,26 +431,27 @@ class Department:
 
         rows = CURSOR.fetchall()
         return [
-            Employee(row[1], row[2], row[3], row[0]) for row in rows
+            Employee(row[1], row[2], self, row[0]) for row in rows
         ]
 ```
 
 ```py
 from config import CURSOR, CONN
+from department import Department
+
 
 class Employee:
 
-    def __init__(self, name, job_title, department_id, id=None):
+    def __init__(self, name, job_title, department, id=None):
         self.id = id
         self.name = name
         self.job_title = job_title
-        self.department_id = department_id
+        self.department = department
 
     def __repr__(self):
         return (
             f"<Employee {self.id}: {self.name}, {self.job_title}, "
-            + f"Department ID: {self.department_id} >"
-        )
+            + f"Department: {self.department.name} >")
 
     @classmethod
     def create_table(cls):
@@ -465,7 +481,7 @@ class Employee:
             VALUES (?, ?, ?)
         """
 
-        CURSOR.execute(sql, (self.name, self.job_title, self.department_id))
+        CURSOR.execute(sql, (self.name, self.job_title, self.department.id))
         CONN.commit()
 
         self.id = CURSOR.lastrowid
@@ -477,8 +493,15 @@ class Employee:
             WHERE id = ?
         """
         CURSOR.execute(sql, (self.name, self.job_title,
-                       self.department_id, self.id))
+                             self.department.id, self.id))
         CONN.commit()
+
+    @classmethod
+    def create(cls, name, job_title, department):
+        """ Initialize a new Employee object and save the object to the database """
+        employee = Employee(name, job_title, department)
+        employee.save()
+        return employee
 
     def delete(self):
         sql = """
@@ -490,16 +513,10 @@ class Employee:
         CONN.commit()
 
     @classmethod
-    def create(cls, name, job_title, department_id):
-        """ Initialize a new Employee object and save the object to the database """
-        employee = Employee(name, job_title, department_id)
-        employee.save()
-        return employee
-
-    @classmethod
     def new_from_db(cls, row):
         """Initialize a new Employee object using the values from the table row."""
-        employee = cls(row[1], row[2], row[3])
+        department = Department.find_by_id(row[3])
+        employee = cls(row[1], row[2], department)
         employee.id = row[0]
         return employee
 
