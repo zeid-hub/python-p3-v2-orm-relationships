@@ -1,4 +1,5 @@
-from department import Department, CONN, CURSOR
+from __init__ import CONN, CURSOR
+from department import Department
 import pytest
 
 
@@ -11,6 +12,7 @@ class TestDepartment:
 
         CURSOR.execute("DROP TABLE IF EXISTS employees")
         CURSOR.execute("DROP TABLE IF EXISTS departments")
+        Department.all = {}
 
     def test_creates_table(self):
         '''contains method "create_table()" that creates table "departments" if it does not exist.'''
@@ -123,8 +125,8 @@ class TestDepartment:
         assert ((id2, "Sales and Marketing", "Building B, 4th Floor")
                 == (department2.id, department2.name, department2.location))
 
-    def test_creates_new_instance_from_db(self):
-        '''contains method "new_from_db()" that takes a table row and creates a Department instance.'''
+    def test_instance_from_db(self):
+        '''contains method "instance_from_db()" that takes a table row and returns a Department instance.'''
 
         Department.create_table()
         Department.create("Payroll", "Building A, 5th Floor")
@@ -133,7 +135,7 @@ class TestDepartment:
             SELECT * FROM departments
         """
         row = CURSOR.execute(sql).fetchone()
-        department = Department.new_from_db(row)
+        department = Department.instance_from_db(row)
 
         assert ((row[0], row[1], row[2]) ==
                 (department.id, department.name, department.location) ==
@@ -205,6 +207,7 @@ class TestDepartment:
         '''contain a method "employees" that gets the employees for the current Department instance '''
 
         from employee import Employee  # avoid circular import issue
+        Employee.all = {}
 
         Department.create_table()
         department1 = Department.create("Payroll", "Building A, 5th Floor")
@@ -214,7 +217,8 @@ class TestDepartment:
         Employee.create_table()
         employee1 = Employee.create("Raha", "Accountant", department1)
         employee2 = Employee.create(
-            "Tal", "Benefits Coordinator", department1)
+            "Tal", "Senior Accountant", department1)
+        employee3 = Employee.create("Amir", "Manager", department2)
 
         employees = department1.employees()
         assert (len(employees) == 2)

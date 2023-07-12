@@ -1,7 +1,10 @@
-from config import CURSOR, CONN
+from __init__ import CURSOR, CONN
 
 
 class Employee:
+
+    # Define a dictionary to store class instances for subsequent lookup when mapping a table row to a class instance.
+    all = {}
 
     def __init__(self, name, job_title, id=None):
         self.id = id
@@ -35,8 +38,10 @@ class Employee:
         CONN.commit()
 
     def save(self):
-        """ Insert a new row with the name and job_title values of the current Employee object.
-        Update object id attribute using the primary key value of new row"""
+        """ Insert a new row with the name, job title values of the current Employee object.
+        Update object id attribute using the primary key value of new row.
+        Save the object in local dictionary using table row's PK as dictionary key"""
+
         sql = """
             INSERT INTO employees (name, job_title)
             VALUES (?, ?)
@@ -46,8 +51,11 @@ class Employee:
         CONN.commit()
 
         self.id = CURSOR.lastrowid
+        Employee.all[self.id] = self
 
     def update(self):
+        """Update the table row corresponding to the current Employee object."""
+
         sql = """
             UPDATE employees
             SET name = ?, job_title = ?
@@ -57,6 +65,8 @@ class Employee:
         CONN.commit()
 
     def delete(self):
+        """Delete the table row corresponding to the current Employee object."""
+
         sql = """
             DELETE FROM employees
             WHERE id = ?
@@ -73,10 +83,16 @@ class Employee:
         return employee
 
     @classmethod
-    def new_from_db(cls, row):
-        """Initialize a new Employee object using the values from the table row."""
-        employee = cls(row[1], row[2])
-        employee.id = row[0]
+    def instance_from_db(cls, row):
+        """Return an Employee object having the attribute values from the table row."""
+
+        # Check the dictionary for an existing class instance using the row's primary key
+        employee = Employee.all.get(row[0])
+        # If not in dictionary, create a new class instance using the row data and add to dictionary
+        if employee is None:
+            employee = cls(row[1], row[2])
+            employee.id = row[0]
+            Employee.all[employee.id] = employee
         return employee
 
     @classmethod
@@ -89,8 +105,7 @@ class Employee:
 
         rows = CURSOR.execute(sql).fetchall()
 
-        cls.all = [cls.new_from_db(row) for row in rows]
-        return cls.all
+        return [cls.instance_from_db(row) for row in rows]
 
     @classmethod
     def find_by_id(cls, id):
@@ -102,7 +117,7 @@ class Employee:
         """
 
         row = CURSOR.execute(sql, (id,)).fetchone()
-        return cls.new_from_db(row) if row else None
+        return cls.instance_from_db(row) if row else None
 
     @classmethod
     def find_by_name(cls, name):
@@ -114,4 +129,4 @@ class Employee:
         """
 
         row = CURSOR.execute(sql, (name,)).fetchone()
-        return cls.new_from_db(row) if row else None
+        return cls.instance_from_db(row) if row else None

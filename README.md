@@ -103,10 +103,13 @@ First let's update the `Employee` class to add a reference to the associated
 - Update the `__repr__` method to include the department name.
 
 ```py
-from config import CURSOR, CONN
+from __init__ import CURSOR, CONN
 from department import Department
 
 class Employee:
+
+    # Define a dictionary to store class instances for subsequent lookup when mapping a table row to a class instance.
+    all = {}
 
     def __init__(self, name, job_title, department, id=None):
         self.id = id
@@ -127,6 +130,7 @@ table:
 ```py
 @classmethod
 def create_table(cls):
+    """ Create a new table to persist the attributes of Employee class instances """
     sql = """
         CREATE TABLE IF NOT EXISTS employees (
         id INTEGER PRIMARY KEY,
@@ -145,17 +149,23 @@ foreign key value in the "employees" table:
 
 ```py
 def save(self):
+    """ Insert a new row with the name, job title, and department id values of the current Employee object.
+        Update object id attribute using the primary key value of new row.
+        Save the object in local dictionary using table row's PK as dictionary key"""
+
     sql = """
-        INSERT INTO employees (name, job_title, department_id)
-        VALUES (?, ?, ?)
+            INSERT INTO employees (name, job_title, department_id)
+            VALUES (?, ?, ?)
     """
 
     CURSOR.execute(sql, (self.name, self.job_title, self.department.id))
     CONN.commit()
 
     self.id = CURSOR.lastrowid
+    Employee.all[self.id] = self
 
 def update(self):
+    """Update the table row corresponding to the current Employee object."""
     sql = """
         UPDATE employees
         SET name = ?, job_title = ?, department_id = ?
@@ -174,18 +184,25 @@ def create(cls, name, job_title, department):
     return employee
 ```
 
-The final change to the `Employee` class is to update the `new_from_db` method
-to include the department when instantiating the `Employee` class instance. We
-use the foreign key stored in `row[3]` (i.e. the `department_id` column in the
-"employees" table) to retrieve the associated `Department` class instance.
+The final change to the `Employee` class is to update the `instance_from_db`
+method to include the department when instantiating the `Employee` class
+instance. We use the foreign key stored in `row[3]` (i.e. the `department_id`
+column in the "employees" table) to retrieve the associated `Department` class
+instance.
 
 ```py
 @classmethod
-def new_from_db(cls, row):
-    """Initialize a new Employee object using the values from the table row."""
-    department = Department.find_by_id(row[3])
-    employee = cls(row[1], row[2], department)
-    employee.id = row[0]
+def instance_from_db(cls, row):
+    """Return an Employee object having the attribute values from the table row."""
+
+    # Check the dictionary for an existing class instance using the row's primary key
+    employee = Employee.all.get(row[0])
+    # If not in dictionary, create a new class instance using the row data and add to dictionary
+    if employee is None:
+        department = Department.find_by_id(row[3])
+        employee = cls(row[1], row[2], department)
+        employee.id = row[0]
+        Employee.all[employee.id] = employee
     return employee
 ```
 
@@ -201,11 +218,11 @@ issue with circular imports (since the `Employee` class imports the `Department`
 class as well).
 
 ```py
-from config import CURSOR, CONN
+from __init__ import CURSOR, CONN
 
 class Department:
 
-    # existing methods ...
+    # existing attributes and methods ...
 
     def employees(self):
         from employee import Employee
@@ -217,7 +234,7 @@ class Department:
 
         rows = CURSOR.fetchall()
         return [
-            Employee(row[1], row[2], self, row[0]) for row in rows
+            Employee.find_by_id(row[0]) for row in rows
         ]
 ```
 
@@ -233,8 +250,7 @@ Run the file to recreate the database with sample data:
 python lib/debug.py
 ```
 
-In the `ipdb` session, you can explore the table data using the ORM methods
-(your employee data will be different):
+In the `ipdb` session, you can explore the table data using the ORM methods:
 
 ```py
 ipdb> Department.get_all()
@@ -243,7 +259,7 @@ ipdb> Department.get_all()
 
 ```py
 ipdb> Employee.get_all()
-[<Employee 1: Deborah Diaz, Web Designer, Department: Payroll >, <Employee 2: Darlene Cook, Web Designer, Department: Human Resources >, <Employee 3: Paul Welch, Database Administrator, Department: Payroll >, <Employee 4: Matthew King, Full-stack Engineer, Department: Payroll >, <Employee 5: Tracey Cox, Manager, Department: Payroll >]
+[<Employee 1: Amir, Accountant, Department: Payroll >, <Employee 2: Bola, Manager, Department: Payroll >, <Employee 3: Charlie, Manager, Department: Human Resources >, <Employee 4: Dani, Benefits Coordinator, Department: Human Resources >, <Employee 5: Hao, New Hires Coordinator, Department: Human Resources >]
 ```
 
 Let's select the payroll department:
@@ -259,7 +275,8 @@ the payroll department.
 
 ```py
 ipdb> payroll.employees()
-[<Employee 1: Deborah Diaz, Web Designer, Department: Payroll >, <Employee 3: Paul Welch, Database Administrator, Department: Payroll >, <Employee 4: Matthew King, Full-stack Engineer, Department: Payroll >, <Employee 5: Tracey Cox, Manager, Department: Payroll >]
+[<Employee 1: Amir, Accountant, Department: Payroll >, <Employee 2: Bola, Manager, Department: Payroll >]
+
 ```
 
 Let's try the other side of the relationship, getting the department associated
@@ -268,15 +285,12 @@ with a given employee:
 ```py
 ipdb> employee = Employee.find_by_id(1)
 ipdb> employee
-<Employee 1: Deborah Diaz, Web Designer, Department: Payroll >
+<Employee 1: Amir, Accountant, Department: Payroll >
 ipdb> employee.department
 <Department 1: Payroll, Building A, 5th Floor>
 ```
 
-You can also use the SQLITE EXPLORER to view the relationship (your data will be
-different):
-
-![employee table](https://curriculum-content.s3.amazonaws.com/7134/python-p3-v2-orm/employee_table.png)
+You can also use the SQLITE EXPLORER to view the relationship.
 
 ## Testing the `Employee` and `Department` classes
 
@@ -301,10 +315,13 @@ side.
 ## Solution Code
 
 ```py
-from config import CURSOR, CONN
+from __init__ import CURSOR, CONN
 
 
 class Department:
+
+    # Define a dictionary to store class instances for subsequent lookup when mapping a table row to a class instance.
+    all = {}
 
     def __init__(self, name, location, id=None):
         self.id = id
@@ -337,7 +354,8 @@ class Department:
 
     def save(self):
         """ Insert a new row with the name and location values of the current Department object.
-        Update object id attribute using the primary key value of new row"""
+        Update object id attribute using the primary key value of new row.
+        Save the object in local dictionary using table row's PK as dictionary key"""
         sql = """
             INSERT INTO departments (name, location)
             VALUES (?, ?)
@@ -347,6 +365,7 @@ class Department:
         CONN.commit()
 
         self.id = CURSOR.lastrowid
+        Department.all[self.id] = self
 
     @classmethod
     def create(cls, name, location):
@@ -366,7 +385,8 @@ class Department:
         CONN.commit()
 
     def delete(self):
-        """Delete the table row corresponding to the current Department class instance"""
+        """Delete the table row corresponding to the current Department class instance.
+        Remove the object from local dictionary."""
         sql = """
             DELETE FROM departments
             WHERE id = ?
@@ -375,16 +395,24 @@ class Department:
         CURSOR.execute(sql, (self.id,))
         CONN.commit()
 
+        del Department.all[self.id]
+
     @classmethod
-    def new_from_db(cls, row):
-        """Return a new Department object using the values from the table row."""
-        department = cls(row[1], row[2])
-        department.id = row[0]
+    def instance_from_db(cls, row):
+        """Return a Department object having the attribute values from the table row."""
+
+        # Check the dictionary for an existing class instance using the row's primary key
+        department = Department.all.get(row[0])
+        # If not in dictionary, create a new class instance using the row data and add to dictionary
+        if department is None:
+            department = cls(row[1], row[2])
+            department.id = row[0]
+            Department.all[department.id] = department
         return department
 
     @classmethod
     def get_all(cls):
-        """Return a list containing a new Department object for each row in the table"""
+        """Return a list containing a Department object corresponding to each row in the table"""
         sql = """
             SELECT *
             FROM departments
@@ -392,12 +420,11 @@ class Department:
 
         rows = CURSOR.execute(sql).fetchall()
 
-        cls.all = [cls.new_from_db(row) for row in rows]
-        return cls.all
+        return [cls.instance_from_db(row) for row in rows]
 
     @classmethod
     def find_by_id(cls, id):
-        """Return a new Department object corresponding to the table row matching the specified primary key"""
+        """Return a Department object corresponding to the table row matching the specified primary key"""
         sql = """
             SELECT *
             FROM departments
@@ -405,11 +432,11 @@ class Department:
         """
 
         row = CURSOR.execute(sql, (id,)).fetchone()
-        return cls.new_from_db(row) if row else None
+        return cls.instance_from_db(row) if row else None
 
     @classmethod
     def find_by_name(cls, name):
-        """Return a new Department object corresponding to first table row matching specified name"""
+        """Return a Department object corresponding to first table row matching specified name"""
         sql = """
             SELECT *
             FROM departments
@@ -417,7 +444,7 @@ class Department:
         """
 
         row = CURSOR.execute(sql, (name,)).fetchone()
-        return cls.new_from_db(row) if row else None
+        return cls.instance_from_db(row) if row else None
 
     def employees(self):
         from employee import Employee
@@ -429,16 +456,20 @@ class Department:
 
         rows = CURSOR.fetchall()
         return [
-            Employee(row[1], row[2], self, row[0]) for row in rows
+            Employee.find_by_id(row[0]) for row in rows
         ]
+
 ```
 
 ```py
-from config import CURSOR, CONN
+from __init__ import CURSOR, CONN
 from department import Department
 
 
 class Employee:
+
+    # Define a dictionary to store class instances for subsequent lookup when mapping a table row to a class instance.
+    all = {}
 
     def __init__(self, name, job_title, department, id=None):
         self.id = id
@@ -453,6 +484,7 @@ class Employee:
 
     @classmethod
     def create_table(cls):
+        """ Create a new table to persist the attributes of Employee class instances """
         sql = """
             CREATE TABLE IF NOT EXISTS employees (
             id INTEGER PRIMARY KEY,
@@ -474,17 +506,22 @@ class Employee:
         CONN.commit()
 
     def save(self):
+        """ Insert a new row with the name, job title, and department id values of the current Employee object.
+        Update object id attribute using the primary key value of new row.
+        Save the object in local dictionary using table row's PK as dictionary key"""
         sql = """
-            INSERT INTO employees (name, job_title, department_id)
-            VALUES (?, ?, ?)
+                INSERT INTO employees (name, job_title, department_id)
+                VALUES (?, ?, ?)
         """
 
         CURSOR.execute(sql, (self.name, self.job_title, self.department.id))
         CONN.commit()
 
         self.id = CURSOR.lastrowid
+        Employee.all[self.id] = self
 
     def update(self):
+        """Update the table row corresponding to the current Employee object."""
         sql = """
             UPDATE employees
             SET name = ?, job_title = ?, department_id = ?
@@ -494,14 +531,8 @@ class Employee:
                              self.department.id, self.id))
         CONN.commit()
 
-    @classmethod
-    def create(cls, name, job_title, department):
-        """ Initialize a new Employee object and save the object to the database """
-        employee = Employee(name, job_title, department)
-        employee.save()
-        return employee
-
     def delete(self):
+        """Delete the row corresponding to the current Employee object"""
         sql = """
             DELETE FROM employees
             WHERE id = ?
@@ -511,11 +542,24 @@ class Employee:
         CONN.commit()
 
     @classmethod
-    def new_from_db(cls, row):
-        """Initialize a new Employee object using the values from the table row."""
-        department = Department.find_by_id(row[3])
-        employee = cls(row[1], row[2], department)
-        employee.id = row[0]
+    def create(cls, name, job_title, department):
+        """ Initialize a new Employee object and save the object to the database """
+        employee = Employee(name, job_title, department)
+        employee.save()
+        return employee
+
+    @classmethod
+    def instance_from_db(cls, row):
+        """Return an Employee object having the attribute values from the table row."""
+
+        # Check the dictionary for an existing class instance using the row's primary key
+        employee = Employee.all.get(row[0])
+        # If not in dictionary, create a new class instance using the row data and add to dictionary
+        if employee is None:
+            department = Department.find_by_id(row[3])
+            employee = cls(row[1], row[2], department)
+            employee.id = row[0]
+            Employee.all[employee.id] = employee
         return employee
 
     @classmethod
@@ -528,8 +572,7 @@ class Employee:
 
         rows = CURSOR.execute(sql).fetchall()
 
-        cls.all = [cls.new_from_db(row) for row in rows]
-        return cls.all
+        return [cls.instance_from_db(row) for row in rows]
 
     @classmethod
     def find_by_id(cls, id):
@@ -541,7 +584,7 @@ class Employee:
         """
 
         row = CURSOR.execute(sql, (id,)).fetchone()
-        return cls.new_from_db(row) if row else None
+        return cls.instance_from_db(row) if row else None
 
     @classmethod
     def find_by_name(cls, name):
@@ -553,6 +596,6 @@ class Employee:
         """
 
         row = CURSOR.execute(sql, (name,)).fetchone()
-        return cls.new_from_db(row) if row else None
+        return cls.instance_from_db(row) if row else None
 
 ```

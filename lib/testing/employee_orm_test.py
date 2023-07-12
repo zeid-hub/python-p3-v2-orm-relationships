@@ -1,4 +1,5 @@
-from employee import Employee, CONN, CURSOR
+from __init__ import CONN, CURSOR
+from employee import Employee
 from department import Department
 from faker import Faker
 import pytest
@@ -13,6 +14,9 @@ class TestEmployee:
 
         CURSOR.execute("DROP TABLE IF EXISTS employees")
         CURSOR.execute("DROP TABLE IF EXISTS departments")
+
+        Department.all = {}
+        Employee.all = {}
 
     def test_creates_table(self):
         '''contains method "create_table()" that creates table "employees" if it does not exist.'''
@@ -161,8 +165,8 @@ class TestEmployee:
                 (employee2.id, employee2.name, employee2.job_title, employee2.department.id) ==
                 (id2, "Tal", "Benefits Coordinator", department.id))
 
-    def test_creates_new_instance_from_db(self):
-        '''contains method "new_from_db()" that takes a db row and creates an Employee instance.'''
+    def test_instance_from_db(self):
+        '''contains method "instance_from_db()" that takes a db row and creates an Employee instance.'''
 
         Department.create_table()
         department = Department("Payroll", "Building A, 5th Floor")
@@ -180,7 +184,7 @@ class TestEmployee:
         """
         row = CURSOR.execute(sql).fetchone()
 
-        employee = Employee.new_from_db(row)
+        employee = Employee.instance_from_db(row)
         assert ((row[0], row[1], row[2], row[3]) ==
                 (employee.id, employee.name, employee.job_title, employee.department.id) ==
                 (employee.id, "Amir", "Programmer", department.id))
