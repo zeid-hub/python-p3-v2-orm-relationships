@@ -3,7 +3,7 @@ from __init__ import CURSOR, CONN
 
 class Department:
 
-    # Define a dictionary to store class instances for subsequent lookup when mapping a table row to a class instance.
+    # Dictionary for mapping a table row to a persisted class instance.
     all = {}
 
     def __init__(self, name, location, id=None):
@@ -68,8 +68,7 @@ class Department:
         CONN.commit()
 
     def delete(self):
-        """Delete the table row corresponding to the current Department class instance.
-        Remove the object from local dictionary."""
+        """Delete the table row corresponding to the current Department class instance"""
         sql = """
             DELETE FROM departments
             WHERE id = ?
@@ -78,16 +77,18 @@ class Department:
         CURSOR.execute(sql, (self.id,))
         CONN.commit()
 
-        del Department.all[self.id]
-
     @classmethod
     def instance_from_db(cls, row):
         """Return a Department object having the attribute values from the table row."""
 
         # Check the dictionary for an existing class instance using the row's primary key
         department = Department.all.get(row[0])
-        # If not in dictionary, create a new class instance using the row data and add to dictionary
-        if department is None:
+        if department:
+            # ensure attributes match row values in case local object was modified
+            department.name = row[1]
+            department.location = row[2]
+        # not in dictionary, create new class instance and add to dictionary
+        else:
             department = cls(row[1], row[2])
             department.id = row[0]
             Department.all[department.id] = department
@@ -95,7 +96,7 @@ class Department:
 
     @classmethod
     def get_all(cls):
-        """Return a list containing a Department object corresponding to each row in the table"""
+        """Return a list containing a Department object per row in the table"""
         sql = """
             SELECT *
             FROM departments

@@ -3,17 +3,17 @@ from __init__ import CURSOR, CONN
 
 class Employee:
 
-    # Define a dictionary to store class instances for subsequent lookup when mapping a table row to a class instance.
+    # Dictionary for mapping a table row to a persisted class instance.
     all = {}
 
-    def __init__(self, name, job_title, id=None):
+    def __init__(self, name, job_title,  id=None):
         self.id = id
         self.name = name
         self.job_title = job_title
 
     def __repr__(self):
         return (
-            f"<Employee {self.id}: {self.name}, {self.job_title} >"
+            f"<Employee {self.id}: {self.name}, {self.job_title}>"
         )
 
     @classmethod
@@ -23,7 +23,7 @@ class Employee:
             CREATE TABLE IF NOT EXISTS employees (
             id INTEGER PRIMARY KEY,
             name TEXT,
-            job_title TEXT)
+            job_title TEXT )
         """
         CURSOR.execute(sql)
         CONN.commit()
@@ -41,10 +41,9 @@ class Employee:
         """ Insert a new row with the name, job title values of the current Employee object.
         Update object id attribute using the primary key value of new row.
         Save the object in local dictionary using table row's PK as dictionary key"""
-
         sql = """
-            INSERT INTO employees (name, job_title)
-            VALUES (?, ?)
+                INSERT INTO employees (name, job_title)
+                VALUES (?, ?)
         """
 
         CURSOR.execute(sql, (self.name, self.job_title))
@@ -55,7 +54,6 @@ class Employee:
 
     def update(self):
         """Update the table row corresponding to the current Employee object."""
-
         sql = """
             UPDATE employees
             SET name = ?, job_title = ?
@@ -65,8 +63,7 @@ class Employee:
         CONN.commit()
 
     def delete(self):
-        """Delete the table row corresponding to the current Employee object."""
-
+        """Delete the row corresponding to the current Employee object"""
         sql = """
             DELETE FROM employees
             WHERE id = ?
@@ -86,10 +83,14 @@ class Employee:
     def instance_from_db(cls, row):
         """Return an Employee object having the attribute values from the table row."""
 
-        # Check the dictionary for an existing class instance using the row's primary key
+        # Check the dictionary for  existing class instance using the row's primary key
         employee = Employee.all.get(row[0])
-        # If not in dictionary, create a new class instance using the row data and add to dictionary
-        if employee is None:
+        if employee:
+            # ensure attributes match row values in case local object was modified
+            employee.name = row[1]
+            employee.job_title = row[2]
+        # not in dictionary, create new class instance and add to dictionary
+        else:
             employee = cls(row[1], row[2])
             employee.id = row[0]
             Employee.all[employee.id] = employee
