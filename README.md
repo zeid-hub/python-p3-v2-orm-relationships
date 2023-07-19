@@ -1,4 +1,4 @@
-# Mapping Object Relationships
+# Mapping Object Relationships : Code-Along
 
 ## Learning Goals
 
