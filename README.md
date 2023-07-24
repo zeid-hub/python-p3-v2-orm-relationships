@@ -1,4 +1,4 @@
-# Mapping Object Relationships
+# Mapping Object Relationships : Code-Along
 
 ## Learning Goals
 
@@ -55,7 +55,7 @@ implemented in the starter code. In this lesson, we will:
 - Update the `Employee` class methods to store and manage the relationship in
   the "employees" database.
 - Update the `Department` class to add a new method to **compute** (not store) a
-  list of associated `Employee` class instances.
+  list of associated `Employee` instances.
 
 ---
 
@@ -110,7 +110,7 @@ from department import Department
 
 class Employee:
 
-    # Dictionary for mapping a table row to a persisted class instance.
+    # Dictionary of objects saved to the database.
     all = {}
 
     def __init__(self, name, job_title, department_id, id=None):
@@ -135,7 +135,7 @@ table:
 ```py
 @classmethod
 def create_table(cls):
-    """ Create a new table to persist the attributes of Employee class instances """
+    """ Create a new table to persist the attributes of Employee instances """
     sql = """
         CREATE TABLE IF NOT EXISTS employees (
         id INTEGER PRIMARY KEY,
@@ -195,14 +195,14 @@ method to include the department id from the table row.
 def instance_from_db(cls, row):
     """Return an Employee object having the attribute values from the table row."""
 
-    # Check the dictionary for  existing class instance using the row's primary key
+    # Check the dictionary for  existing instance using the row's primary key
     employee = Employee.all.get(row[0])
     if employee:
-        # ensure attributes match row values in case local object was modified
+        # ensure attributes match row values in case local instance was modified
         employee.name = row[1]
         employee.job_title = row[2]
         employee.department_id = row[3]
-    # not in dictionary, create new class instance and add to dictionary
+    # not in dictionary, create new instance and add to dictionary
     else:
         employee = cls(row[1], row[2], row[3])
         employee.id = row[0]
@@ -214,12 +214,12 @@ def instance_from_db(cls, row):
 
 Since `Department` is not on the owning side of the relationship, we won't store
 anything about employees in the "departments" table. But we might want to get a
-list of all employees that work for a department. We'll add a method to
-`Department` that accomplishes this task:
+list of all employees that work for a department. We'll add a method to the
+`Department` class that accomplishes this task:
 
 - query the "employees" table for rows that contain a foreign key value that
   matches the current department's id.
-- map the row data to an `Employee` class instance.
+- map the row data to an `Employee` instance.
 
 Note that we import the `Employee` class within the function definition to
 issues with circular imports (since the `Employee` class imports the
@@ -330,7 +330,7 @@ from __init__ import CURSOR, CONN
 
 class Department:
 
-    # Dictionary for mapping a table row to a persisted class instance.
+    # Dictionary of objects saved to the database.
     all = {}
 
     def __init__(self, name, location, id=None):
@@ -343,7 +343,7 @@ class Department:
 
     @classmethod
     def create_table(cls):
-        """ Create a new table to persist the attributes of Department class instances """
+        """ Create a new table to persist the attributes of Department instances """
         sql = """
             CREATE TABLE IF NOT EXISTS departments (
             id INTEGER PRIMARY KEY,
@@ -355,7 +355,7 @@ class Department:
 
     @classmethod
     def drop_table(cls):
-        """ Drop the table that persists Department class instances """
+        """ Drop the table that persists Department instances """
         sql = """
             DROP TABLE IF EXISTS departments;
         """
@@ -379,13 +379,13 @@ class Department:
 
     @classmethod
     def create(cls, name, location):
-        """ Initialize a new Department object and save the object to the database """
+        """ Initialize a new Department instance and save the object to the database """
         department = Department(name, location)
         department.save()
         return department
 
     def update(self):
-        """Update the table row corresponding to the current Department object."""
+        """Update the table row corresponding to the current Department instance."""
         sql = """
             UPDATE departments
             SET name = ?, location = ?
@@ -395,7 +395,7 @@ class Department:
         CONN.commit()
 
     def delete(self):
-        """Delete the table row corresponding to the current Department class instance"""
+        """Delete the table row corresponding to the current Department instance"""
         sql = """
             DELETE FROM departments
             WHERE id = ?
@@ -408,13 +408,13 @@ class Department:
     def instance_from_db(cls, row):
         """Return a Department object having the attribute values from the table row."""
 
-        # Check the dictionary for an existing class instance using the row's primary key
+        # Check the dictionary for an existing instance using the row's primary key
         department = Department.all.get(row[0])
         if department:
-            # ensure attributes match row values in case local object was modified
+            # ensure attributes match row values in case local instance was modified
             department.name = row[1]
             department.location = row[2]
-        # not in dictionary, create new class instance and add to dictionary
+        # not in dictionary, create new instance and add to dictionary
         else:
             department = cls(row[1], row[2])
             department.id = row[0]
@@ -480,7 +480,7 @@ from department import Department
 
 class Employee:
 
-    # Dictionary for mapping a table row to a persisted class instance.
+    # Dictionary of objects saved to the database.
     all = {}
 
     def __init__(self, name, job_title, department_id, id=None):
@@ -497,7 +497,7 @@ class Employee:
 
     @classmethod
     def create_table(cls):
-        """ Create a new table to persist the attributes of Employee class instances """
+        """ Create a new table to persist the attributes of Employee instances """
         sql = """
             CREATE TABLE IF NOT EXISTS employees (
             id INTEGER PRIMARY KEY,
@@ -511,7 +511,7 @@ class Employee:
 
     @classmethod
     def drop_table(cls):
-        """ Drop the table that persists Employee class instances """
+        """ Drop the table that persists Employee instances """
         sql = """
             DROP TABLE IF EXISTS employees;
         """
@@ -534,7 +534,7 @@ class Employee:
         Employee.all[self.id] = self
 
     def update(self):
-        """Update the table row corresponding to the current Employee object."""
+        """Update the table row corresponding to the current Employee instance."""
         sql = """
             UPDATE employees
             SET name = ?, job_title = ?, department_id = ?
@@ -545,7 +545,7 @@ class Employee:
         CONN.commit()
 
     def delete(self):
-        """Delete the row corresponding to the current Employee object"""
+        """Delete the row corresponding to the current Employee instance"""
         sql = """
             DELETE FROM employees
             WHERE id = ?
@@ -556,7 +556,7 @@ class Employee:
 
     @classmethod
     def create(cls, name, job_title, department_id):
-        """ Initialize a new Employee object and save the object to the database """
+        """ Initialize a new Employee instance and save the object to the database """
         employee = Employee(name, job_title, department_id)
         employee.save()
         return employee
@@ -565,14 +565,14 @@ class Employee:
     def instance_from_db(cls, row):
         """Return an Employee object having the attribute values from the table row."""
 
-        # Check the dictionary for  existing class instance using the row's primary key
+        # Check the dictionary for  existing instance using the row's primary key
         employee = Employee.all.get(row[0])
         if employee:
-            # ensure attributes match row values in case local object was modified
+            # ensure attributes match row values in case local instance was modified
             employee.name = row[1]
             employee.job_title = row[2]
             employee.department_id = row[3]
-        # not in dictionary, create new class instance and add to dictionary
+        # not in dictionary, create new instance and add to dictionary
         else:
             employee = cls(row[1], row[2], row[3])
             employee.id = row[0]

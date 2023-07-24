@@ -3,7 +3,7 @@ from __init__ import CURSOR, CONN
 
 class Employee:
 
-    # Dictionary for mapping a table row to a persisted class instance.
+    # Dictionary of objects saved to the database.
     all = {}
 
     def __init__(self, name, job_title,  id=None):
@@ -18,7 +18,7 @@ class Employee:
 
     @classmethod
     def create_table(cls):
-        """ Create a new table to persist the attributes of Employee class instances """
+        """ Create a new table to persist the attributes of Employee instances """
         sql = """
             CREATE TABLE IF NOT EXISTS employees (
             id INTEGER PRIMARY KEY,
@@ -30,7 +30,7 @@ class Employee:
 
     @classmethod
     def drop_table(cls):
-        """ Drop the table that persists Employee class instances """
+        """ Drop the table that persists Employee instances """
         sql = """
             DROP TABLE IF EXISTS employees;
         """
@@ -83,13 +83,13 @@ class Employee:
     def instance_from_db(cls, row):
         """Return an Employee object having the attribute values from the table row."""
 
-        # Check the dictionary for  existing class instance using the row's primary key
+        # Check the dictionary for  existing instance using the row's primary key
         employee = Employee.all.get(row[0])
         if employee:
-            # ensure attributes match row values in case local object was modified
+            # ensure attributes match row values in case local instance was modified
             employee.name = row[1]
             employee.job_title = row[2]
-        # not in dictionary, create new class instance and add to dictionary
+        # not in dictionary, create new instance and add to dictionary
         else:
             employee = cls(row[1], row[2])
             employee.id = row[0]
