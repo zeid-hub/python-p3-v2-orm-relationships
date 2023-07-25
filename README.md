@@ -403,6 +403,8 @@ class Department:
 
         CURSOR.execute(sql, (self.id,))
         CONN.commit()
+        # remove object from local dictionary
+        del type(self).all[self.id]
 
     @classmethod
     def instance_from_db(cls, row):
@@ -553,6 +555,8 @@ class Employee:
 
         CURSOR.execute(sql, (self.id,))
         CONN.commit()
+        # remove object from local dictionary
+        del type(self).all[self.id]
 
     @classmethod
     def create(cls, name, job_title, department_id):
