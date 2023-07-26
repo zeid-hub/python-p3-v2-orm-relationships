@@ -50,7 +50,7 @@ class Employee:
         CONN.commit()
 
         self.id = CURSOR.lastrowid
-        Employee.all[self.id] = self
+        type(self).all[self.id] = self
 
     def update(self):
         """Update the table row corresponding to the current Employee object."""
@@ -71,11 +71,13 @@ class Employee:
 
         CURSOR.execute(sql, (self.id,))
         CONN.commit()
+        # remove object from local dictionary
+        del type(self).all[self.id]
 
     @classmethod
     def create(cls, name, job_title):
         """ Initialize a new Employee object and save the object to the database """
-        employee = Employee(name, job_title)
+        employee = cls(name, job_title)
         employee.save()
         return employee
 
@@ -84,7 +86,7 @@ class Employee:
         """Return an Employee object having the attribute values from the table row."""
 
         # Check the dictionary for  existing instance using the row's primary key
-        employee = Employee.all.get(row[0])
+        employee = cls.all.get(row[0])
         if employee:
             # ensure attributes match row values in case local instance was modified
             employee.name = row[1]
@@ -93,7 +95,7 @@ class Employee:
         else:
             employee = cls(row[1], row[2])
             employee.id = row[0]
-            Employee.all[employee.id] = employee
+            cls.all[employee.id] = employee
         return employee
 
     @classmethod
